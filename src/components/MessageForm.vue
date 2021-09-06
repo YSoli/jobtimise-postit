@@ -3,10 +3,10 @@
         <form @submit.prevent="submit" class="pa-5">
         
             <validation-provider v-slot="{ errors }" name="text" rules="required|min:2" >
-                <v-text-field v-model="newMessage.text"  :error-messages="errors" label="Ton message" required></v-text-field>
+                <v-text-field v-model="newMessage.text" @keydown="$refs.observer.reset()"  :error-messages="errors" label="Ton message" required></v-text-field>
             </validation-provider>
             <validation-provider v-slot="{ errors }" name="author" rules="required|min:2" >
-                <v-text-field v-model="newMessage.author"  :error-messages="errors" label="Auteur" required></v-text-field>
+                <v-text-field v-model="newMessage.author" @keydown="$refs.observer.reset()"  :error-messages="errors" label="Auteur" required></v-text-field>
             </validation-provider>
             <v-btn class="mr-4" type="submit" :disabled="invalid">Poster</v-btn>
             <v-btn @click="clear">Vider</v-btn>
