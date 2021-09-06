@@ -1,11 +1,9 @@
 <template>
     <validation-observer ref="observer" v-slot="{ invalid }" >
         <form @submit.prevent="submit" class="pa-5">
-            <validation-provider v-slot="{ errors }" name="title" rules="required|min:2" >
-                <v-text-field v-model="newMessage.title"  :error-messages="errors" label="Titre" required></v-text-field>
-            </validation-provider>
+        
             <validation-provider v-slot="{ errors }" name="text" rules="required|min:2" >
-                <v-text-field v-model="newMessage.text"  :error-messages="errors" label="Message" required></v-text-field>
+                <v-text-field v-model="newMessage.text"  :error-messages="errors" label="Ton message" required></v-text-field>
             </validation-provider>
             <validation-provider v-slot="{ errors }" name="author" rules="required|min:2" >
                 <v-text-field v-model="newMessage.author"  :error-messages="errors" label="Auteur" required></v-text-field>
@@ -45,7 +43,6 @@ export default {
         return {
             newMessage:{
                 text:"",
-                title:"",
                 author:""
             },
 

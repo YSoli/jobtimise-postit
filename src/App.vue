@@ -15,9 +15,8 @@
     </v-app-bar>
 
     <v-main>
-      <div class="d-flex pa-5">
-        <p class="pa-2">Laisser votre message ici :</p>
-        <v-btn color="primary" @click="dialog = true">Ajouter un message</v-btn>
+      <div class="d-flex flex-column pa-5 pb-0">
+        <v-btn color="primary" class="ma-auto mb-0" large @click="dialog = true">Ajouter un message</v-btn>
         <v-dialog transition="dialog-bottom-transition" max-width="600" v-model="deleteDialog" >
           <v-card>
             <v-toolbar color="pink" dark >Supprimer un message</v-toolbar>
@@ -37,24 +36,32 @@
             </v-card-actions>
           </v-card>
         </v-dialog>
+        <p class="title mt-5">Les derniers messages :</p>
       </div>  
-      <div class="postit-container ">
-        <draggable v-if="messages.length" :value="messages" @change="handleDragChange($event)"  @start="drag = true" v-bind="dragOptions" @end="drag = false"  ghost-class="ghost">
-          <v-card class="postit" elevation="2" v-for="(message,i) in messages" :key="message.author+message.title" :style="`background-color:${message.color}`">
-            <p class="title">{{message.title}}</p>
-            <small>{{message.date}}</small>
+      <div  class="postit-container ">
+        <div v-if="messages.length && !loading">
+          <v-card class="postit" elevation="2" v-for="(message) in messages" :key="message.id" :style="`background-color:${message.color}`">
+            <small><strong>De {{message.author}}</strong> </small> 
+            <small> le {{message.date}}</small>
             <div class="my-4 text-subtitle-1">
               {{message.text}}
             </div>
             <v-card-actions>
               <v-btn fab dark small color="grey">
-                <v-icon @click="deleteDialog = true; toDelete = i;" dark>
+                <v-icon @click="deleteDialog = true; toDelete = message.id;" dark>
                   mdi-delete
                 </v-icon>
               </v-btn>
             </v-card-actions>
           </v-card>
-        </draggable>
+        </div>
+        <v-progress-circular
+          v-else-if="loading"
+          :size="50"
+          color="primary"
+          indeterminate
+          class="pa-5"
+        ></v-progress-circular>
       </div>
 
     </v-main>
@@ -62,19 +69,14 @@
 </template>
 
 <script>
-// import json from './assets/postit';
+
 import MessageForm from './components/MessageForm.vue'
 
-import draggable from 'vuedraggable';
 import moment from 'moment';
-
-// import { initializeApp } from 'firebase/app';
-// import { getFirestore, collection, getDocs } from 'firebase/firestore/lite';
+moment.locale('fr')
 
 
 import firebase from "firebase";
-import "firebase/firestore";
-console.log(firebase);
 
 firebase.initializeApp({
   apiKey: "AIzaSyAP34uluF7tN22RfJyHW3r1n5u2_3olu2A",
@@ -88,20 +90,6 @@ firebase.initializeApp({
 
 const db = firebase.firestore();
 
-// const firebaseConfig = {
-//     apiKey: "AIzaSyAP34uluF7tN22RfJyHW3r1n5u2_3olu2A",
-//     authDomain: "postit-aaed4.firebaseapp.com",
-//     databaseURL: "https://postit-aaed4-default-rtdb.europe-west1.firebasedatabase.app",
-//     projectId: "postit-aaed4",
-//     storageBucket: "postit-aaed4.appspot.com",
-//     messagingSenderId: "514209411686",
-//     appId: "1:514209411686:web:3196ae9f83020acab173a7"
-// }
-  
-// const firebase = initializeApp(firebaseConfig);
-// const db = getFirestore(firebase);
-
-
 export default {
   name: 'App',
   data:()=>{
@@ -111,34 +99,26 @@ export default {
       dialog:false,
       colors: ['#B7DDC7','#6AC7B4','#FFF49C','#F3C5D5','#9FC7E4'],
       toDelete:null,
-      deleteDialog:false
+      deleteDialog:false,
+      loading: true
     }
   },
-  created(){
-    db.collection("posts").get().then((querySnapshot) => {
-      querySnapshot.forEach((doc) => {
-        this.messages.push(doc.data());
-      });
-    });
-    // const postsCol = collection(db, 'posts');
-    // const postSnapshot = await getDocs(postsCol);
-    // this.messages = postSnapshot.docs.map(doc => doc.data());
+  async created(){
+    await this.getPostsFromFirebase();
+    this.loading = false;
   },
   components: {
-    draggable,
     MessageForm
   },
   computed:{
-    dragOptions() {
-      return {
-          animation: 200,
-          group: "description",
-          disabled: false,
-          ghostClass: "ghost"
-      };
-    }
   },
   methods:{
+    getPostsFromFirebase(){
+      this.loading = true;
+      return db.collection("posts").get().then((querySnapshot) => {
+        this.messages = querySnapshot.docs.map(e=>{return {id: e.id, ...e.data()}}).sort((a,b)=>b.order-a.order);
+      });
+    },
     handleDragChange(e){
       const {moved} = e;
       const el = this.messages[moved.oldIndex];
@@ -146,14 +126,34 @@ export default {
       this.messages.splice(moved.newIndex,0,el); 
     },
     addMessage(e){
-      e.date = moment().format('Do MMMM YYYY, h:mm:ss a');
+      this.loading = true;
+      e.date = moment().format('Do MMMM YYYY, h:mm a');
       e.color =  this.colors[Math.floor(Math.random()*this.colors.length)];
-      this.messages.unshift(e);
+      e.order = this.messages.length;
       this.dialog = false;
+
+      db.collection("posts").doc().set(e)
+      .then(async () => {
+        await this.getPostsFromFirebase();
+      })
+      .catch((error) => {
+          console.error("Error writing document: ", error);
+      }).finally(()=>{
+        this.loading = false;
+      });
+
     },
     deleteMessage(){
-      this.messages.splice(this.toDelete,1);
-      this.deleteDialog = false;
+      db.collection("posts").doc(this.toDelete).delete().then(async () => {
+        this.toDelete = null;
+        this.loading = true;
+        await this.getPostsFromFirebase();
+      }).catch((error) => {
+          console.error("Error removing document: ", error);
+      }).finally(()=>{
+        this.loading=false;
+        this.deleteDialog = false;
+      });
     }
   }
 };
