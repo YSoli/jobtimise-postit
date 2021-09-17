@@ -36,7 +36,14 @@
             </v-card-actions>
           </v-card>
         </v-dialog>
-        <p class="title mt-5">Les derniers messages :</p>
+        <div class="d-flex align-center justify-md-start justify-space-between">
+          <p class="title mt-5">Les derniers messages : <small class="caption d-block">(reload dans <countdown init="30" :key="refreshed" @finish="refresh"></countdown>s )</small></p>
+          <v-btn class="ml-5" fab dark small color="grey" :disabled="loading">
+                <v-icon @click="refresh" dark>
+                  mdi-reload
+                </v-icon>
+              </v-btn>
+        </div>
       </div>  
       <div  class="postit-container ">
         <div v-if="messages.length && !loading">
@@ -70,7 +77,9 @@
 
 <script>
 
-import MessageForm from './components/MessageForm.vue'
+import MessageForm from './components/MessageForm.vue';
+import Countdown from './components/Countdown.vue';
+
 
 import moment from 'moment';
 moment.locale('fr')
@@ -92,6 +101,10 @@ const db = firebase.firestore();
 
 export default {
   name: 'App',
+  components: {
+    MessageForm,
+    Countdown
+  },
   data:()=>{
     return{
       drag:false,
@@ -100,15 +113,13 @@ export default {
       colors: ['#B7DDC7','#6AC7B4','#FFF49C','#F3C5D5','#9FC7E4'],
       toDelete:null,
       deleteDialog:false,
-      loading: true
+      loading: true,
+      refreshed: 0
     }
   },
   async created(){
     await this.getPostsFromFirebase();
     this.loading = false;
-  },
-  components: {
-    MessageForm
   },
   computed:{
   },
@@ -118,6 +129,15 @@ export default {
       return db.collection("posts").get().then((querySnapshot) => {
         this.messages = querySnapshot.docs.map(e=>{return {id: e.id, ...e.data()}}).sort((a,b)=>b.order-a.order);
       });
+    },
+    async refresh(){
+      try{
+        await this.getPostsFromFirebase();
+        this.refreshed++;
+        this.loading = false;
+      }catch(e){
+        alert('Une erreur est survenue');
+      }
     },
     handleDragChange(e){
       const {moved} = e;
