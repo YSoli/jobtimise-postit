@@ -86,6 +86,7 @@ moment.locale('fr')
 
 
 import firebase from "firebase";
+// import { getAuth, signInWithEmailAndPassword } from "firebase/auth";
 
 firebase.initializeApp({
   apiKey: "AIzaSyAP34uluF7tN22RfJyHW3r1n5u2_3olu2A",
@@ -118,8 +119,13 @@ export default {
     }
   },
   async created(){
-    await this.getPostsFromFirebase();
-    this.loading = false;
+    try{
+      await firebase.auth().signInWithEmailAndPassword('no-reply@jobtimise.com', '!postitAccess1');
+      await this.getPostsFromFirebase();
+      this.loading = false;
+    }catch(e){
+      console.log(e)
+    }
   },
   computed:{
   },
